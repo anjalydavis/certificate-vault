@@ -177,5 +177,5 @@ export const UploadPage: React.FC = () => {
         </form>
       </div>
     </div>
-
+)
 }
