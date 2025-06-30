@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { 
-  FileText, 
-  Calendar, 
-  Download, 
-  Edit, 
-  Trash2, 
+import {
+  FileText,
+  Calendar,
+  Download,
+  Edit,
+  Trash2,
   Search,
-  Filter,
-  Plus
+  Plus,
+  X
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -33,6 +33,7 @@ export const CertificatesPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
     fetchCertificates()
@@ -77,12 +78,12 @@ export const CertificatesPage: React.FC = () => {
 
       if (error) throw error
 
-      setCertificates(prev => prev.map(cert => 
-        cert.id === id 
+      setCertificates(prev => prev.map(cert =>
+        cert.id === id
           ? { ...cert, title: editTitle, description: editDescription }
           : cert
       ))
-      
+
       setEditingId(null)
       toast.success('Certificate updated successfully!')
     } catch (error: any) {
@@ -100,7 +101,6 @@ export const CertificatesPage: React.FC = () => {
     if (!confirm('Are you sure you want to delete this certificate?')) return
 
     try {
-      // Delete from database
       const { error: dbError } = await supabase
         .from('certificates')
         .delete()
@@ -108,7 +108,6 @@ export const CertificatesPage: React.FC = () => {
 
       if (dbError) throw dbError
 
-      // Delete from storage
       const fileName = fileUrl.split('/').pop()
       if (fileName) {
         await supabase.storage
@@ -131,18 +130,18 @@ export const CertificatesPage: React.FC = () => {
   const groupedCertificates = filteredCertificates.reduce((groups, cert) => {
     const date = new Date(cert.created_at)
     const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    
+
     if (!groups[monthYear]) {
       groups[monthYear] = []
     }
     groups[monthYear].push(cert)
-    
+
     return groups
   }, {} as Record<string, Certificate[]>)
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
@@ -151,7 +150,26 @@ export const CertificatesPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 relative">
+      {/* Modal for Preview */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="relative w-full max-w-4xl h-[80vh] bg-white rounded-xl overflow-hidden">
+            <button
+              className="absolute top-4 right-4 text-gray-600 hover:text-red-600"
+              onClick={() => setPreviewUrl(null)}
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <iframe
+              src={previewUrl}
+              title="Preview"
+              className="w-full h-full"
+            ></iframe>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
@@ -180,7 +198,7 @@ export const CertificatesPage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search certificates..."
-            className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-slate-900/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
@@ -197,7 +215,7 @@ export const CertificatesPage: React.FC = () => {
           </p>
           <Link
             to="/upload"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Plus className="h-4 w-4 mr-2" />
             Upload Certificate
@@ -211,12 +229,12 @@ export const CertificatesPage: React.FC = () => {
                 <Calendar className="h-5 w-5 mr-2" />
                 {monthYear}
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {certs.map((cert) => (
                   <div
                     key={cert.id}
-                    className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-xl p-6 border border-gray-200 dark:border-slate-700 hover:shadow-lg transition-all duration-200"
+                    className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-xl p-6 border border-gray-200 dark:border-slate-700 hover:shadow-lg transition-all"
                   >
                     {editingId === cert.id ? (
                       <div className="space-y-4">
@@ -224,24 +242,24 @@ export const CertificatesPage: React.FC = () => {
                           type="text"
                           value={editTitle}
                           onChange={(e) => setEditTitle(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                         />
                         <textarea
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
                           rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white resize-none"
                         />
                         <div className="flex space-x-2">
                           <button
                             onClick={() => handleSave(cert.id)}
-                            className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                            className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
                           >
                             Save
                           </button>
                           <button
                             onClick={handleCancel}
-                            className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                            className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
                           >
                             Cancel
                           </button>
@@ -256,13 +274,13 @@ export const CertificatesPage: React.FC = () => {
                           <div className="flex space-x-1">
                             <button
                               onClick={() => handleEdit(cert)}
-                              className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                              className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(cert.id, cert.file_url)}
-                              className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                              className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -272,7 +290,20 @@ export const CertificatesPage: React.FC = () => {
                         <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
                           {cert.title}
                         </h3>
-                        
+
+                        {/* Sneak Preview */}
+                        <div
+                          className="cursor-pointer border border-gray-300 dark:border-slate-700 rounded-lg overflow-hidden mb-4"
+                          onClick={() => setPreviewUrl(cert.file_url)}
+                          title="Click to preview full"
+                        >
+                          <iframe
+                            src={`${cert.file_url}#toolbar=0&navpanes=0&scrollbar=0`}
+                            className="w-full h-40"
+                            title="PDF Preview"
+                          />
+                        </div>
+
                         {cert.description && (
                           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                             {cert.description}
@@ -288,7 +319,7 @@ export const CertificatesPage: React.FC = () => {
                           href={cert.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          className="flex items-center justify-center w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                         >
                           <Download className="h-4 w-4 mr-2" />
                           View Certificate
